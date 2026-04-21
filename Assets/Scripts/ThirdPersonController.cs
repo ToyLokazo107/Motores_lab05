@@ -2,6 +2,7 @@ using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Sirenix.OdinInspector;
+using System.Collections;
 
 public class ThirdPersonController : MonoBehaviour
 {
@@ -49,6 +50,8 @@ public class ThirdPersonController : MonoBehaviour
     public float maxTimeInAir;
     [FoldoutGroup("WallRun")]
     public bool enableWallRun;
+
+    private Vector3 dashDirection;
 
     Vector3 normalDebug;
     Vector3 impactPoint;
@@ -107,11 +110,11 @@ public class ThirdPersonController : MonoBehaviour
         Vector3 moveDir;
         if (!enableWallRun)
         {
-            moveDir = (cameraForwardDir * moveInput.y + transform.right * moveInput.x) * moveSpeed;
+            moveDir = dashDirection * dashForce * (dashTimer / dashDuration);
         }
         else
         {
-            moveDir = (crossResult * moveInput.y) * moveSpeed;
+            moveDir = dashDirection * dashForce * (dashTimer / dashDuration);
 
 
 
@@ -138,13 +141,7 @@ public class ThirdPersonController : MonoBehaviour
 
         if (IsDashing)
         {
-            //->convertir el dash a un barrido por el piso! dash con gravedad integrada omaegoto!
-            moveDir = transform.forward * dashForce * (dashTimer / dashDuration);
-
-            dashTimer -= Time.deltaTime;
-
-            if (dashTimer <= 0)
-                IsDashing = false;
+            moveDir = transform.forward * dashForce;
         }
         controller.Move(moveDir * Time.deltaTime);
     }
@@ -175,10 +172,24 @@ public class ThirdPersonController : MonoBehaviour
             hit.rigidbody.AddForce(pushDir * pushForce, ForceMode.Impulse);
         }
     }
-    private void OnDash(InputAction.CallbackContext context)
+
+    IEnumerator DashCoroutine()
     {
         IsDashing = true;
-        dashTimer = dashDuration;
+
+        float tiempo = dashDuration;
+
+        while (tiempo > 0)
+        {
+            tiempo -= Time.deltaTime;
+            yield return null;
+        }
+
+        IsDashing = false;
+    }
+    private void OnDash(InputAction.CallbackContext context)
+    {
+        StartCoroutine(DashCoroutine());
     }
 
     public void EnableWallRun()
